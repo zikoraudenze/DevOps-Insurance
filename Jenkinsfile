@@ -5,7 +5,7 @@ pipeline {
         DOCKER_REGISTRY = "chandan669/insurance"
         DOCKER_IMAGE = "${DOCKER_REGISTRY}:1.0"
         DOCKER_CREDENTIALS_ID = "dockercreds"
-        GIT_REPO = "https://github.com/Chandanb2003/star-agile-banking-finance.git"
+        GIT_REPO = "https://github.com/Chandanb2003/Insurance.git"
         GOOGLE_APPLICATION_CREDENTIALS = "${WORKSPACE}/terraform-key.json"
         TERRAFORM_DIR = "${WORKSPACE}/terraform_files"
         CLUSTER_NAME = "capstone-projects-insurance"
