@@ -1,4 +1,4 @@
-- name: Check Installed Software Versions
+- name: Checks Installed Software Versions
   hosts: all
   become: true
   tasks:
