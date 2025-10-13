@@ -1,21 +1,36 @@
-- name : Configure Docker on EC2 Instances
-  hosts : all
-  become: true
-  connection : ssh
-  tasks : 
-  - name: updating apt
-    command : sudo apt-get update
-
-  - name : Install Docker
-    become: true
-    apt:
-     name: docker.io
-     state: latest
-     update_cache: yes
-    
-
-  - name : Start Docker Service
-    command : sudo systemctl start docker
-
-  - name: Deploy Docker Container
-    command:  docker run -itd -p 8080:8081 pratap1371/insure:1.0
+# Deployment for front-end
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: insurance-deployment
+  labels:
+    app: front-end
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: front-end
+  template:
+    metadata:
+      labels:
+        app: front-end
+    spec:
+      containers:
+      - name: medicure
+        image: chandan669/insurance:1.0
+        ports:
+        - containerPort: 8082
+---
+# Service for front-end with LoadBalancer
+apiVersion: v1
+kind: Service
+metadata:
+  name: insurance-deployment
+spec:
+  type: LoadBalancer
+  selector:
+    app: front-end
+  ports:
+  - protocol: TCP
+    port: 8082
+    targetPort: 8082  # match containerPort inside deployment

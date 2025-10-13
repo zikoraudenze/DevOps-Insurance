@@ -1,20 +1,68 @@
-- name : Configure Docker on EC2 Instances
-  hosts : all
+- name: Check Installed Software Versions
+  hosts: all
   become: true
-  connection : ssh
-  tasks : 
-  - name: updating apt
-    command : sudo apt-get update
+  tasks:
+    - name: Check Java version
+      command: java -version
+      register: java_version
+      ignore_errors: yes
+      changed_when: false
 
-  - name : Install Docker
-    command : sudo apt-get install -y docker.io
-    become : yes
-    become_user : root
+    - name: Check Docker version
+      command: docker --version
+      register: docker_version
+      ignore_errors: yes
+      changed_when: false
 
-  - name : Start Docker Service
-    command : sudo systemctl start docker
-    become : yes
-    become_user : root
+    - name: Check Git version
+      command: git --version
+      register: git_version
+      ignore_errors: yes
+      changed_when: false
 
-  - name: Deploy Docker Container
-    command: docker run -itd -p 8084:8081 shubhamkushwah123/insure-me:3.0
+    - name: Check kubectl version
+      command: kubectl version --client
+      register: kubectl_version
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Check Maven version
+      command: mvn --version
+      register: maven_version
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Check Selenium chromedriver version
+      command: chromedriver --version
+      register: selenium_version
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Display neatly formatted version info
+      debug:
+        msg: |
+          ================================
+          Installed Software Versions Report
+          ================================
+
+          Java Version:
+          {{ java_version.stderr | default('Not Installed') | trim }}
+
+          Docker Version:
+          {{ docker_version.stdout | default('Not Installed') | trim }}
+
+          Git Version:
+          {{ git_version.stdout | default('Not Installed') | trim }}
+
+          kubectl Version:
+          {{ kubectl_version.stdout | default('Not Installed') | trim }}
+
+          Maven Version:
+          {{ maven_version.stdout | default('Not Installed') | trim }}
+
+          Selenium Driver Version:
+          {{ selenium_version.stdout | default('Not Installed') | trim }}
+
+          ================================
+          End of Versions Report
+          ================================

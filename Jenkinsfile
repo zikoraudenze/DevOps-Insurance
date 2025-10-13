@@ -1,65 +1,148 @@
-node{
-    
-    def mavenHome
-    def mavenCMD
-    def docker
-    def dockerCMD
-    def tagName
-    
-    stage('prepare enviroment'){
-        echo 'initialize all the variables'
-        mavenHome = tool name: 'maven' , type: 'maven'
-        mavenCMD = "${mavenHome}/bin/mvn"
-        docker = tool name: 'docker' , type: 'org.jenkinsci.plugins.docker.commons.tools.DockerTool'
-        dockerCMD = "${docker}/bin/docker"
-        tagName="3.0"
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_REGISTRY = "chandan669/insurance"
+        DOCKER_IMAGE = "${DOCKER_REGISTRY}:1.0"
+        DOCKER_CREDENTIALS_ID = "dockercreds"
+        GIT_REPO = "https://github.com/Chandanb2003/star-agile-banking-finance.git"
+        GOOGLE_APPLICATION_CREDENTIALS = "${WORKSPACE}/terraform-key.json"
+        TERRAFORM_DIR = "${WORKSPACE}/terraform_files"
+        CLUSTER_NAME = "capstone-projects-insurance"
+        CLUSTER_ZONE = "asia-south1-a"
+        PROJECT_ID = "model-deployments"
     }
-    
-    stage('git code checkout'){
-        try{
-            echo 'checkout the code from git repository'
-            git 'https://github.com/shubhamkushwah123/star-agile-insurance-project.git'
+
+    stages {
+
+        stage('Prepare Credentials') {
+            steps {
+                script {
+                    echo '🔐 Copying service account credentials...'
+                    sh 'cp /var/lib/jenkins/terraform-key.json ${WORKSPACE}/terraform-key.json'
+                }
+            }
         }
-        catch(Exception e){
-            echo 'Exception occured in Git Code Checkout Stage'
-            currentBuild.result = "FAILURE"
-            emailext body: '''Dear All,
-            The Jenkins job ${JOB_NAME} has been failed. Request you to please have a look at it immediately by clicking on the below link. 
-            ${BUILD_URL}''', subject: 'Job ${JOB_NAME} ${BUILD_NUMBER} is failed', to: 'shubham@gmail.com'
+
+        stage('Git Checkout') {
+            steps {
+                git branch: 'master', url: env.GIT_REPO
+            }
+        }
+
+        stage('Terraform Init & Apply (Create GKE Cluster if not exists)') {
+            steps {
+                dir("${env.TERRAFORM_DIR}") {
+                    script {
+                        echo '🚀 Checking if GKE cluster already exists...'
+                        sh '''
+                        set +e
+                        gcloud auth activate-service-account --key-file=${WORKSPACE}/terraform-key.json
+                        CLUSTER_EXIST=$(gcloud container clusters list --project ${PROJECT_ID} --zone ${CLUSTER_ZONE} --filter="name=${CLUSTER_NAME}" --format="value(name)")
+                        set -e
+
+                        if [ -z "$CLUSTER_EXIST" ]; then
+                            echo "🆕 Cluster not found. Creating new GKE cluster using Terraform..."
+                            export GOOGLE_APPLICATION_CREDENTIALS=${WORKSPACE}/terraform-key.json
+                            terraform init -input=false
+                            terraform apply -auto-approve -input=false
+                        else
+                            echo "✅ Cluster '${CLUSTER_NAME}' already exists. Skipping Terraform apply."
+                        fi
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Wait for GKE Cluster to be Ready') {
+            steps {
+                script {
+                    echo '⏳ Waiting for GKE cluster to become ready...'
+                    sh '''
+                    gcloud auth activate-service-account --key-file=${WORKSPACE}/terraform-key.json
+                    STATUS=$(gcloud container clusters describe ${CLUSTER_NAME} \
+                        --zone ${CLUSTER_ZONE} \
+                        --project ${PROJECT_ID} \
+                        --format="value(status)")
+
+                    echo "Current status: $STATUS"
+                    while [ "$STATUS" != "RUNNING" ]; do
+                        echo "Cluster not ready yet... waiting 20s"
+                        sleep 20
+                        STATUS=$(gcloud container clusters describe ${CLUSTER_NAME} \
+                            --zone ${CLUSTER_ZONE} \
+                            --project ${PROJECT_ID} \
+                            --format="value(status)")
+                        echo "Current status: $STATUS"
+                    done
+                    echo "✅ Cluster is READY!"
+                    '''
+                }
+            }
+        }
+
+        stage('Build Package') {
+            steps {
+                sh 'mvn package'
+            }
+        }
+
+        stage('Docker Build & Push') {
+            steps {
+                script {
+                    echo '🐳 Building and pushing Docker image...'
+                    sh "docker build -t ${env.DOCKER_IMAGE} ."
+                    withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh "docker login -u ${DOCKER_USER} -p ${DOCKER_PASS}"
+                    }
+                    sh "docker push ${env.DOCKER_IMAGE}"
+                }
+            }
+        }
+
+        stage('Configure kubectl') {
+            steps {
+                script {
+                    echo '⚙️ Configuring kubectl...'
+                    sh '''
+                    gcloud auth activate-service-account --key-file=${WORKSPACE}/terraform-key.json
+                    gcloud container clusters get-credentials ${CLUSTER_NAME} \
+                        --zone ${CLUSTER_ZONE} \
+                        --project ${PROJECT_ID} \
+                    '''
+                }
+            }
+        }
+
+        stage('Run Ansible Playbook for Version Checks') {
+            steps {
+                script {
+                    echo "🛠 Running Ansible playbook to check installed versions..."
+
+                    // Assuming ansible and python are installed on the Jenkins agent
+                    sh '''
+                    ansible-playbook ${WORKSPACE}/ansible-playbook.yml --connection=local -i localhost,
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                echo '🚢 Deploying manifests...'
+                sh '''
+                kubectl apply -f deploy.yml --validate=false
+                kubectl apply -f service.yaml --validate=false
+                '''
+            }
         }
     }
-    
-    stage('Build the Application'){
-        echo "Cleaning... Compiling...Testing... Packaging..."
-        //sh 'mvn clean package'
-        sh "${mavenCMD} clean package"        
-    }
-    
-    stage('publish test reports'){
-        publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: '/var/lib/jenkins/workspace/Capstone-Project-Live-Demo/target/surefire-reports', reportFiles: 'index.html', reportName: 'HTML Report', reportTitles: '', useWrapperFileDirectly: true])
-    }
-    
-    stage('Containerize the application'){
-        echo 'Creating Docker image'
-        sh "${dockerCMD} build -t shubhamkushwah123/insure-me:${tagName} ."
-    }
-    
-    stage('Pushing it ot the DockerHub'){
-        echo 'Pushing the docker image to DockerHub'
-        withCredentials([string(credentialsId: 'dock-password', variable: 'dockerHubPassword')]) {
-        sh "${dockerCMD} login -u shubhamkushwah123 -p ${dockerHubPassword}"
-        sh "${dockerCMD} push shubhamkushwah123/insure-me:${tagName}"
-            
+
+    post {
+        always {
+            echo '🧹 Cleaning workspace...'
+            cleanWs()
         }
-        
-    stage('Configure and Deploy to the test-server'){
-        ansiblePlaybook become: true, credentialsId: 'ansible-key', disableHostKeyChecking: true, installation: 'ansible', inventory: '/etc/ansible/hosts', playbook: 'ansible-playbook.yml'
-    }
-        
-        
     }
 }
-
-
-
-
