@@ -19,5 +19,5 @@ variable "zone" {
 variable "cluster_name" {
   description = "capstone-projects-insurance"
   type        = string
-  default     = "capstone-projects"
+  default     = "capstone-projects-insurance"
 }
