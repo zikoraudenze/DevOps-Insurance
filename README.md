@@ -64,3 +64,7 @@ Integrate Helm
 Add Prometheus + Grafana
 Add GitHub Actions pipeline
 Add automated testing
+<img width="1440" height="900" alt="image" src="https://github.com/user-attachments/assets/d779bf22-a80a-45bc-b86e-4a8aeb593793" />
+<img width="1440" height="900" alt="image" src="https://github.com/user-attachments/assets/c5a66386-c751-400e-b2c2-f4d5d5a9a325" />
+<img width="1440" height="900" alt="image" src="https://github.com/user-attachments/assets/cf76f753-ca63-44a8-8f1c-6d1cdcf6f33b" />
+<img width="1440" height="900" alt="image" src="https://github.com/user-attachments/assets/25dae396-7904-49d0-adab-28a2f9ac011f" />
