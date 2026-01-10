@@ -20,17 +20,3 @@ spec:
         image: chandan669/insurance:1.0
         ports:
         - containerPort: 8082
----
-# Service for front-end with LoadBalancer
-apiVersion: v1
-kind: Service
-metadata:
-  name: insurance-deployment
-spec:
-  type: LoadBalancer
-  selector:
-    app: front-end
-  ports:
-  - protocol: TCP
-    port: 8082
-    targetPort: 8082  # match containerPort inside deployment
