@@ -27,32 +27,13 @@ pipeline {
 
         stage('Git Checkout') {
             steps {
-                git branch: 'master', url: env.GIT_REPO
+                echo "✅ Already checked out by Jenkins (Declarative: Checkout SCM). Skipping extra checkout."
             }
         }
 
-        stage('Terraform Init & Apply (Create GKE Cluster if not exists)') {
+        stage('Terraform (EKS) - Next Step') {
             steps {
-                dir("${env.TERRAFORM_DIR}") {
-                    script {
-                        echo '🚀 Checking if GKE cluster already exists...'
-                        sh '''
-                        set +e
-                        gcloud auth activate-service-account --key-file=${WORKSPACE}/terraform-key.json
-                        CLUSTER_EXIST=$(gcloud container clusters list --project ${PROJECT_ID} --zone ${CLUSTER_ZONE} --filter="name=${CLUSTER_NAME}" --format="value(name)")
-                        set -e
-
-                        if [ -z "$CLUSTER_EXIST" ]; then
-                            echo "🆕 Cluster not found. Creating new GKE cluster using Terraform..."
-                            export GOOGLE_APPLICATION_CREDENTIALS=${WORKSPACE}/terraform-key.json
-                            terraform init -input=false
-                            terraform apply -auto-approve -input=false
-                        else
-                            echo "✅ Cluster '${CLUSTER_NAME}' already exist. Skipping Terraform apply."
-                        fi
-                        '''
-                    }
-                }
+                echo "⏭ Skipping GKE/GCloud steps. Next we will wire Terraform to provision EKS in us-east-2."
             }
         }
 
