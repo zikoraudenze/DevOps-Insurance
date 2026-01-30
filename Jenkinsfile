@@ -15,14 +15,15 @@ pipeline {
 
     stages {
 
-        stage('Prepare Credentials') {
+        stage('Prepare AWS') {
             steps {
-                script {
-                    echo '🔐 Copying service account credentials...'
-                    sh 'cp /var/lib/jenkins/terraform-key.json ${WORKSPACE}/terraform-key.json'
-                }
+                sh '''
+                echo "🔐 Using AWS instance profile credentials..."
+                aws sts get-caller-identity
+                '''
             }
         }
+
 
         stage('Git Checkout') {
             steps {
