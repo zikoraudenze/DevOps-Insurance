@@ -37,12 +37,6 @@ pipeline {
             }
         }
 
-        stage('Wait for Cluster (EKS placeholder)') {
-            steps {
-                echo "⏭ Skipping GKE wait. EKS readiness check will be added later."
-            }
-        }
-
 
         stage('Build Package') {
             steps {
