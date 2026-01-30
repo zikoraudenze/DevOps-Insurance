@@ -37,32 +37,12 @@ pipeline {
             }
         }
 
-        stage('Wait for GKE Cluster to be Ready') {
+        stage('Wait for Cluster (EKS placeholder)') {
             steps {
-                script {
-                    echo '⏳ Waiting for GKE cluster to become ready...'
-                    sh '''
-                    gcloud auth activate-service-account --key-file=${WORKSPACE}/terraform-key.json
-                    STATUS=$(gcloud container clusters describe ${CLUSTER_NAME} \
-                        --zone ${CLUSTER_ZONE} \
-                        --project ${PROJECT_ID} \
-                        --format="value(status)")
-
-                    echo "Current status: $STATUS"
-                    while [ "$STATUS" != "RUNNING" ]; do
-                        echo "Cluster not ready yet... waiting 20s"
-                        sleep 20
-                        STATUS=$(gcloud container clusters describe ${CLUSTER_NAME} \
-                            --zone ${CLUSTER_ZONE} \
-                            --project ${PROJECT_ID} \
-                            --format="value(status)")
-                        echo "Current status: $STATUS"
-                    done
-                    echo "✅ Cluster is READY!"
-                    '''
-                }
+                echo "⏭ Skipping GKE wait. EKS readiness check will be added later."
             }
         }
+
 
         stage('Build Package') {
             steps {
